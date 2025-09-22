@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timesheet Reviewer Bot</title>
+    <!-- React and ReactDOM CDNs -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel Standalone CDN -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            background-color: #121212;
+            font-family: sans-serif;
+            color: #e2e8f0; /* text-gray-200 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .chat-container {
+            padding: 1rem; /* p-4 */
+            max-width: 48rem; /* max-w-2xl */
+            width: 100%;
+        }
+        .chat-box {
+            background-color: #1f1f1f;
+            border-radius: 1.5rem; /* rounded-3xl */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-xl */
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 85vh;
+        }
+        .chat-header {
+            background-color: #2a2a2a;
+            padding: 1.25rem; /* p-5 */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top-left-radius: 1.5rem;
+            border-top-right-radius: 1.5rem;
+        }
+        .chat-header h1 {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 600; /* font-semibold */
+        }
+        @media (min-width: 768px) { /* md: */
+            .chat-header h1 {
+                font-size: 1.5rem; /* md:text-2xl */
+            }
+            .chat-messages {
+                padding: 1.5rem; /* md:p-6 */
+            }
+        }
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            font-size: 0.875rem; /* text-sm */
+            color: #9ca3af; /* text-gray-400 */
+        }
+        .status-dot {
+            position: relative;
+            display: flex;
+            height: 0.5rem;
+            width: 0.5rem;
+            margin-right: 0.5rem;
+        }
+        .status-dot-ping {
+            animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+            position: absolute;
+            display: inline-flex;
+            height: 100%;
+            width: 100%;
+            border-radius: 9999px;
+            background-color: #4ade80; /* bg-green-400 */
+            opacity: 0.75;
+        }
+        .status-dot-solid {
+            position: relative;
+            display: inline-flex;
+            border-radius: 9999px;
+            height: 0.5rem;
+            width: 0.5rem;
+            background-color: #22c55e; /* bg-green-500 */
+        }
+        .chat-messages {
+            flex-grow: 1;
+            padding: 1.25rem; /* p-5 */
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem; /* space-y-4 */
+        }
+        .message-bubble {
+            padding: 0.75rem 1rem; /* py-3 px-4 */
+            border-radius: 1rem;
+            max-width: 75%;
+        }
+        .user-message {
+            margin-left: auto;
+            background-color: #0d47a1;
+            text-align: right;
+            border-bottom-right-radius: 0.5rem;
+        }
+        .bot-message {
+            margin-right: auto;
+            background-color: #333333;
+            border-bottom-left-radius: 0.5rem;
+        }
+        .loading-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem; /* space-x-2 */
+            margin: 0.5rem 0; /* my-2 */
+        }
+        .dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 50%;
+            background-color: #9ca3af; /* bg-gray-400 */
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .dot:nth-child(2) {
+            animation-delay: 0.15s;
+        }
+        .dot:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+        .chat-suggestions {
+            margin-top: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+        .suggestion-button {
+            background-color: #374151; /* bg-gray-700 */
+            color: #e2e8f0;
+            font-size: 0.75rem;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            transition-property: background-color;
+            transition-duration: 200ms;
+        }
+        .suggestion-button:hover {
+            background-color: #4b5563; /* hover:bg-gray-600 */
+        }
+        .chat-form {
+            background-color: #2a2a2a;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-bottom-left-radius: 1.5rem;
+            border-bottom-right-radius: 1.5rem;
+        }
+        .reset-button {
+            color: #9ca3af;
+            transition-property: color;
+            transition-duration: 200ms;
+            padding: 0.5rem;
+        }
+        .reset-button:hover {
+            color: #e2e8f0;
+        }
+        .chat-input {
+            flex-grow: 1;
+            background-color: #1f1f1f;
+            border: 1px solid #333333;
+            border-radius: 9999px;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            outline: none;
+            color: #e2e8f0;
+            -webkit-appearance: none; /* Removes native input styling */
+        }
+        .chat-input::placeholder {
+            color: #6b7280; /* placeholder-gray-500 */
+        }
+        .chat-input:focus {
+            border-color: #3b82f6; /* focus:border-blue-500 */
+        }
+        .send-button {
+            background-color: #2563eb; /* bg-blue-600 */
+            color: #ffffff;
+            padding: 0.75rem;
+            border-radius: 9999px;
+            transition-property: background-color;
+            transition-duration: 200ms;
+        }
+        .send-button:hover {
+            background-color: #1d4ed8; /* hover:bg-blue-700 */
+        }
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .welcome-message {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            color: #6b7280;
+        }
+        .welcome-message p:first-child {
+            font-size: 1.125rem;
+        }
+        .welcome-message p:last-child {
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        @keyframes ping {
+            75%, 100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+    </style>
+</head>
+<body class="bg-[#121212] font-sans text-gray-200 flex items-center justify-center min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useRef, useEffect } = React;
+        const { createRoot } = ReactDOM;
+
+        const App = () => {
+            const [messages, setMessages] = useState([]);
+            const [input, setInput] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const messagesEndRef = useRef(null);
+            
+            const scrollToBottom = () => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            };
+
+            useEffect(scrollToBottom, [messages]);
+
+            const handleSend = async (e) => {
+                e.preventDefault();
+                if (!input.trim()) return;
+                const newUserMessage = { text: input, sender: 'user' };
+                setMessages((prevMessages) => [...prevMessages, newUserMessage]);
+                setIsLoading(true);
+
+                try {
+                    const response = await fetch('/review', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ query: input }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    setMessages((prevMessages) => [...prevMessages, { text: data.response, sender: 'bot' }]);
+                } catch (error) {
+                    console.error('Error:', error);
+                    setMessages((prevMessages) => [...prevMessages, { text: "I'm sorry, I encountered an error. Please try again.", sender: 'bot' }]);
+                } finally {
+                    setIsLoading(false);
+                    setInput('');
+                }
+            };
+            
+            const handleResetChat = () => {
+                setMessages([]);
+            };
+
+            const LoadingIndicator = () => (
+                <div className="loading-indicator">
+                    <div className="dot"></div>
+                    <div className="dot"></div>
+                    <div className="dot"></div>
+                </div>
+            );
+
+            const ChatSuggestions = () => (
+                <div className="chat-suggestions">
+                    <button onClick={() => setInput("total hours of John Doe")} className="suggestion-button">
+                        John's Hours
+                    </button>
+                    <button onClick={() => setInput("overtime done by employees")} className="suggestion-button">
+                        Overtime
+                    </button>
+                    <button onClick={() => setInput("total time spent on Project Alpha")} className="suggestion-button">
+                        Project Alpha
+                    </button>
+                    <button onClick={() => setInput("when did Jane Smith work on Project Gamma")} className="suggestion-button">
+                        Jane's Hours
+                    </button>
+                </div>
+            );
+
+            return (
+                <div className="chat-container">
+                    <div className="chat-box">
+                        <div className="chat-header">
+                            <h1 className="text-xl md:text-2xl font-semibold">Timesheet Reviewer Bot</h1>
+                            <div className="status-indicator">
+                                <span className="status-dot">
+                                    <span className="status-dot-ping"></span>
+                                    <span className="status-dot-solid"></span>
+                                </span>
+                                Status: Online
+                            </div>
+                        </div>
+
+                        <div className="chat-messages">
+                            {messages.length === 0 && (
+                                <div className="welcome-message">
+                                    <p>Ask me about timesheets...</p>
+                                    <p>I can answer questions about hours worked, projects, and employee overtime.</p>
+                                    <ChatSuggestions />
+                                </div>
+                            )}
+                            {messages.map((msg, index) => (
+                                <div key={index} className={`message-container ${msg.sender === 'user' ? 'self-end' : 'self-start'}`}>
+                                    <div className={`message-bubble ${msg.sender === 'user' ? 'user-message' : 'bot-message'}`}>
+                                        {msg.text}
+                                    </div>
+                                </div>
+                            ))}
+                            {isLoading && (
+                                <div className="loading-container">
+                                    <LoadingIndicator />
+                                </div>
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        <form onSubmit={handleSend} className="chat-form">
+                            <button
+                                type="button"
+                                onClick={handleResetChat}
+                                className="reset-button"
+                                title="Reset Chat"
+                            >
+                                <i className="fas fa-sync-alt"></i>
+                            </button>
+                            <input
+                                type="text"
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                className="chat-input"
+                                placeholder="Ask about timesheets..."
+                                disabled={isLoading}
+                            />
+                            <button
+                                type="submit"
+                                className="send-button"
+                                disabled={isLoading}
+                                aria-label="Send"
+                            >
+                                <i className="fas fa-paper-plane"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        const container = document.getElementById('root');
+        const root = createRoot(container);
+        root.render(<App />);
+
+    </script>
+</body>
+</html>
